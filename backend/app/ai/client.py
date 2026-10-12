@@ -121,10 +121,59 @@ class AIClient:
         response_schema_name: str = "structured_response",
     ) -> str:
         """Generate text and translate provider failures into stable app errors."""
+        return await self._generate(
+            instructions=instructions,
+            input_data=input_text,
+            response_schema=response_schema,
+            response_schema_name=response_schema_name,
+        )
+
+    async def generate_image_text(
+        self,
+        *,
+        instructions: str,
+        image_base64: str,
+        media_type: str,
+        input_text: str = "Extract every visible course section from this image.",
+        response_schema: dict[str, Any] | None = None,
+        response_schema_name: str = "structured_response",
+    ) -> str:
+        """Generate validated text from an inline image input."""
+        input_data = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": input_text,
+                    },
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:{media_type};base64,{image_base64}",
+                        "detail": "high",
+                    },
+                ],
+            }
+        ]
+        return await self._generate(
+            instructions=instructions,
+            input_data=input_data,
+            response_schema=response_schema,
+            response_schema_name=response_schema_name,
+        )
+
+    async def _generate(
+        self,
+        *,
+        instructions: str,
+        input_data: Any,
+        response_schema: dict[str, Any] | None,
+        response_schema_name: str,
+    ) -> str:
         request: dict[str, Any] = {
             "model": self.settings.model,
             "instructions": instructions,
-            "input": input_text,
+            "input": input_data,
         }
         if response_schema is not None:
             request["text"] = {

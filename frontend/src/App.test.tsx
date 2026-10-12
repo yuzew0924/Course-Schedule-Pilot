@@ -11,6 +11,8 @@ function defaultParsedPreferences() {
     requiredDaysOff: [],
     preferredTimeOfDay: "none",
     gapPreference: "none",
+    allowedGapMinutes: null,
+    minimumLongGapMinutes: null,
     fixedSections: [],
     requireOpenSections: true,
     hardConstraints: [],
@@ -105,6 +107,61 @@ describe("App", () => {
     expect(screen.getAllByText("Linked to Lecture A")).toHaveLength(2);
     expect(screen.getAllByText("KNE 120")).toHaveLength(2);
     expect(screen.getByText("SLN 12303")).toBeInTheDocument();
+  });
+
+  it("uploads a per-course screenshot, fills editable fields, and discards the image after adding", async () => {
+    const fetchMock = vi.fn().mockImplementation((input: string, init?: RequestInit) => {
+      if (!init?.method) {
+        return Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
+      }
+      expect(input).toMatch(/\/api\/courses\/extract-from-image$/);
+      return Promise.resolve(new Response(JSON.stringify({
+        courses: [{
+          code: "CSE 414",
+          title: "Database Systems",
+          groups: [
+            { type: "lecture", choose: 1, sections: [{ id: "A", status: "open", sln: "12345", meetings: [{ days: ["M", "W", "F"], startTime: "09:30", endTime: "10:20", location: "KNE 120" }] }] },
+            { type: "quiz", choose: 1, sections: [{ id: "AA", status: "open", sln: "12346", parentSectionId: "A", meetings: [{ days: ["Th"], startTime: "12:30", endTime: "13:20", location: "LOW 101" }] }] }
+          ]
+        }],
+        warnings: ["Verify the room number."]
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    const file = new File(["image"], "schedule.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/Choose image/), { target: { files: [file] } });
+
+    expect(await screen.findByDisplayValue("CSE 414")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("09:30")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("12:30")).toBeInTheDocument();
+    expect(screen.getByText("Verify the room number.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+
+    expect(await screen.findByText("CSE 414")).toBeInTheDocument();
+    expect(screen.getByText("Linked to Lecture A")).toBeInTheDocument();
+    expect(screen.queryByAltText("Course screenshot preview")).not.toBeInTheDocument();
+  });
+
+  it("accepts a course screenshot pasted from the clipboard", async () => {
+    const fetchMock = vi.fn().mockImplementation((_input: string, init?: RequestInit) => {
+      if (!init?.method) return Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify({
+        courses: [{ code: "MATH 208", title: "Linear Algebra", groups: [{ type: "lecture", choose: 1, sections: [{ id: "A", status: "open", meetings: [{ days: ["M", "W", "F"], startTime: "10:30", endTime: "11:20", location: "KNE 110" }] }] }] }],
+        warnings: []
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    const pastedImage = new File(["image"], "clipboard.png", { type: "image/png" });
+    fireEvent.paste(screen.getByLabelText("Course screenshot paste area"), {
+      clipboardData: { files: [pastedImage] }
+    });
+
+    expect(await screen.findByDisplayValue("MATH 208")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("10:30")).toBeInTheDocument();
   });
 
   it("uses safe defaults when preference text is blank", async () => {

@@ -1,10 +1,10 @@
-# Calendar Agent
+# Course Schedule Pilot
 
-Calendar Agent is a course schedule planning assistant that helps students compare possible class schedules before registration. Users can enter courses, available lecture and quiz sections, fixed choices, and scheduling preferences. The app then generates ranked schedule options and displays each one as a weekly calendar.
+Course Schedule Pilot is a course schedule planning assistant that helps students compare possible class schedules before registration. Users can enter courses, available lecture and quiz sections, fixed choices, and scheduling preferences. The app then generates ranked schedule options and displays each one as a weekly calendar.
 
 ## Description
 
-Planning a course schedule is often messy because every course may have several lectures, quiz sections, labs, availability states, and registration constraints. Calendar Agent is designed to turn that information into clear options.
+Planning a course schedule is often messy because every course may have several lectures, quiz sections, labs, availability states, and registration constraints. Course Schedule Pilot is designed to turn that information into clear options.
 
 The project focuses on three core problems:
 
@@ -16,6 +16,7 @@ The planned architecture uses a React frontend for the interactive calendar inte
 
 ## Features
 
+- Upload a course-listing screenshot to extract editable lecture, quiz, and lab times.
 - Enter courses with lectures, quiz sections, labs, and meeting times.
 - Mark sections as fixed when the user has already chosen them.
 - Filter by availability, such as open-only sections.
@@ -33,7 +34,7 @@ The planned architecture uses a React frontend for the interactive calendar inte
 - Backend: Python, FastAPI
 - Scheduling Engine: Python service layer
 - Testing: pytest for backend tests, Vitest for frontend tests
-- AI Layer: validated preference parsing and grounded reason rewriting; OCR remains future work
+- AI Layer: validated screenshot extraction, preference parsing, and grounded reason rewriting
 
 ## Requirements
 
@@ -45,7 +46,7 @@ Planned development requirements:
 - pip
 - Git
 
-No external API key is required for the initial manual-input MVP. Future screenshot parsing or AI extraction features may require an API key.
+Manual course entry does not require an external API key. Screenshot extraction and natural-language preference parsing require an OpenAI API key and a configured model with image input support.
 
 ## Installation
 
@@ -101,8 +102,8 @@ http://localhost:5173
 
 Example workflow:
 
-1. Add courses such as `MATH 208`, `CSE 414`, `INFO 370`, and `CSE 332`.
-2. Enter each available lecture and quiz section.
+1. Upload a clear PNG, JPEG, or WebP course screenshot, or add a course manually.
+2. Review and edit each extracted lecture and quiz section.
 3. Lock fixed sections, such as `CSE 414 C` and `CSE 414 CD`.
 4. Set preferences, such as no classes before `9:30 AM` unless unavoidable.
 5. Generate schedule options.
@@ -125,11 +126,35 @@ the original preference text, and unresolved hard conflicts disable schedule
 generation. Validation, AI, connectivity, and no-result states provide specific
 recovery information instead of a generic failure message.
 
+Numeric hard gap rules are structured and enforced by the solver. For example,
+“gaps must be 10 minutes or at least 2 hours” becomes
+`allowedGapMinutes: 10` and `minimumLongGapMinutes: 120`; schedules with an
+11–119 minute same-day gap are filtered out rather than merely ranked lower.
+
 For a no-setup demonstration, select **Load sample data**. The bundled courses
 render a structural summary and contain at least one conflict-free combination.
 Preference text accepts English or Chinese. Blank preference text is handled as
 an explicit default of open sections only, with no additional ranking
 preferences.
+
+### Screenshot Course Extraction
+
+In the **Add a course** panel, focus the course screenshot area and paste an
+image from the clipboard, or select **Choose image** for a PNG, JPEG, or WebP
+file up to 10 MB. Use one screenshot per course. The backend sends the image to
+the configured vision-capable model and
+validates the structured result against the same `Course`, `SectionGroup`,
+`Section`, and `Meeting` models used by manual entry. Recognition fills the
+current course draft, where every course code, section ID, status, SLN, weekday,
+time, location, and linked lecture can be corrected before selecting **Add
+course**. The source image is discarded after the course is added; only the
+validated, editable course data is retained.
+
+The extraction endpoint is `POST /api/courses/extract-from-image`. It accepts
+`imageBase64`, `mediaType`, and optional `courseCodeHint` and `courseTitleHint`
+fields. It returns `courses` and `warnings`, and never sends unvalidated AI
+output to the scheduler. Supported media types are `image/png`, `image/jpeg`,
+and `image/webp`.
 
 ## Example Input
 
@@ -617,18 +642,17 @@ Week 2 is complete when all of the following remain true:
 
 ## Known Issues / Limitations
 
-- Course data must initially be entered manually.
-- Screenshot parsing is planned but not implemented yet.
+- Screenshot extraction requires a configured vision-capable OpenAI model and
+  users should review the editable result before adding a course.
 - Seat availability refresh is planned but not implemented yet.
-- The first version will focus on weekday schedules.
+- The scheduler currently supports Monday through Friday schedules.
 
 ## Roadmap
 
-- Build the React course input and preference UI.
-- Add weekly calendar visualization.
-- Add sample course data.
-- Add import support for pasted registration tables.
-- Add screenshot/OCR-assisted extraction.
+- Add live seat availability refresh.
+- Add import support for structured registration exports.
+- Improve screenshot extraction confidence reporting and correction guidance.
+- Expand scheduling support beyond weekday course meetings.
 - Add export to `.ics` calendar files.
 - Add saved schedule scenarios.
 

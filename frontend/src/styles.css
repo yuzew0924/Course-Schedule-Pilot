@@ -46,6 +46,22 @@ h1, h2, h3, p { margin-top: 0; }
 
 .course-name-input { width: 100%; height: 44px; border: 1px solid #cbd6e3; border-radius: 6px; padding: 0 13px; color: #142641; background: #fbfcfe; }
 .course-basics { display: grid; grid-template-columns: 0.75fr 1.25fr; gap: 10px; }
+.image-import { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; margin-top: 14px; border: 1px dashed #9cbcc2; border-radius: 7px; padding: 12px; outline: none; background: #f6fbfb; }
+.image-import:focus-within, .image-import:focus { border-color: #0b7780; box-shadow: 0 0 0 3px rgb(22 132 147 / 10%); }
+.image-import-copy { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
+.image-import-copy strong { display: block; margin-bottom: 3px; font-size: 0.8rem; }
+.image-import-copy p { margin: 0; color: #68768a; font-size: 0.7rem; line-height: 1.4; }
+.image-import-icon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 6px; color: #075762; background: #dff2f0; }
+.image-upload-button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #8bacb3; border-radius: 6px; padding: 0 12px; color: #075762; background: #fff; font-size: 0.74rem; font-weight: 800; cursor: pointer; }
+.image-upload-button:hover { border-color: #0b7780; background: #edf8f7; }
+.image-upload-button.disabled { cursor: wait; opacity: 0.65; }
+.image-upload-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+.image-file-name { grid-column: 1 / -1; overflow: hidden; color: #52627a; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+.image-preview-wrap { position: relative; grid-column: 1 / -1; width: min(100%, 420px); }
+.image-preview { display: block; width: 100%; max-height: 180px; border: 1px solid #cbd6e3; border-radius: 6px; object-fit: contain; background: #fff; }
+.image-preview-wrap .icon-button { position: absolute; top: 5px; right: 5px; border: 1px solid #d8e0e8; background: #fff; }
+.image-warning { grid-column: 1 / -1; border-left: 3px solid #d39326; padding: 7px 9px; color: #7a4a00; background: #fff9eb; font-size: 0.7rem; }
+.image-warning ul { margin: 4px 0 0; padding-left: 18px; }
 .course-basics .field-label { margin: 0; }
 .course-basics .course-name-input { display: block; margin-top: 7px; font-weight: 400; }
 .section-builder { margin: 18px 0 0; border: 0; padding: 0; }
@@ -210,6 +226,8 @@ h1, h2, h3, p { margin-top: 0; }
   .input-layout, .review-layout, .results-layout { padding: 10px; }
   .course-input-panel, .preference-input-panel, .review-card { padding: 14px; }
   .course-basics, .course-edit-header { grid-template-columns: 1fr; }
+  .image-import { grid-template-columns: 1fr; }
+  .image-upload-button { width: 100%; }
   .section-column-labels { display: none; }
   .section-input-row { grid-template-columns: 1fr 72px 1fr 36px; border-bottom: 1px solid #e5eaf0; padding-bottom: 10px; }
   .section-input-row input[type="time"] { grid-column: span 2; }

@@ -352,6 +352,8 @@ def test_core_model_schemas_use_documented_fields() -> None:
         "requiredDaysOff",
         "preferredTimeOfDay",
         "gapPreference",
+        "allowedGapMinutes",
+        "minimumLongGapMinutes",
         "fixedSections",
         "requireOpenSections",
         "hardConstraints",

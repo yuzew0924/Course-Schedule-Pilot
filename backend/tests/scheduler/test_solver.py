@@ -624,6 +624,36 @@ def test_soft_earliest_start_does_not_filter_schedule_candidates() -> None:
     assert len(generate_schedule_candidates(request)) == 1
 
 
+@pytest.mark.parametrize(
+    ("second_start", "expected_count"),
+    [("10:10", 1), ("11:10", 0), ("12:00", 1)],
+)
+def test_hard_gap_rule_allows_only_short_or_long_gaps(
+    second_start: str,
+    expected_count: int,
+) -> None:
+    request = ScheduleRequest.model_validate(
+        {
+            "courses": [
+                {
+                    "code": "CSE 373",
+                    "groups": [{"type": "lecture", "sections": [section("A", day="M", start="09:00", end="10:00")]}],
+                },
+                {
+                    "code": "CSE 414",
+                    "groups": [{"type": "lecture", "sections": [section("A", day="M", start=second_start, end="13:00")]}],
+                },
+            ],
+            "preferences": {
+                "allowedGapMinutes": 10,
+                "minimumLongGapMinutes": 120,
+            },
+        }
+    )
+
+    assert len(generate_schedule_candidates(request)) == expected_count
+
+
 def test_closed_fixed_section_cannot_bypass_open_only_validation() -> None:
     with pytest.raises(ValidationError, match="fixed section must be open"):
         ScheduleRequest.model_validate(

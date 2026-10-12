@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  ImageUp,
   LoaderCircle,
   Pencil,
   Plus,
@@ -14,7 +15,7 @@ import {
   Sparkles,
   Trash2
 } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties } from "react";
 
 type DayCode = "M" | "T" | "W" | "Th" | "F";
 type Stage = "input" | "review" | "results";
@@ -54,6 +55,8 @@ type ParsedPreferences = {
   requiredDaysOff: DayCode[];
   preferredTimeOfDay: "morning" | "afternoon" | "evening" | "none";
   gapPreference: "compact" | "balanced" | "breaks" | "none";
+  allowedGapMinutes: number | null;
+  minimumLongGapMinutes: number | null;
   fixedSections: string[];
   requireOpenSections: boolean;
   hardConstraints: string[];
@@ -103,6 +106,11 @@ type GenerateResponse = {
   interpretedPreferences: ParsedPreferences;
   schedules: RankedSchedule[];
   count: number;
+  warnings: string[];
+};
+
+type CourseImageExtraction = {
+  courses: Course[];
   warnings: string[];
 };
 
@@ -191,6 +199,8 @@ const defaultPreferences: ParsedPreferences = {
   requiredDaysOff: [],
   preferredTimeOfDay: "none",
   gapPreference: "none",
+  allowedGapMinutes: null,
+  minimumLongGapMinutes: null,
   fixedSections: [],
   requireOpenSections: true,
   hardConstraints: [],
@@ -539,6 +549,10 @@ type InputViewProps = {
   courseError: string;
   requestError: string;
   loading: boolean;
+  imageLoading: boolean;
+  imageName: string;
+  imagePreview: string;
+  imageWarnings: string[];
   onCourseCodeChange: (value: string) => void;
   onCourseTitleChange: (value: string) => void;
   onSectionChange: (key: number, field: keyof SectionDraft, value: string) => void;
@@ -548,6 +562,8 @@ type InputViewProps = {
   onRemoveCourse: (code: string) => void;
   onSaveCourse: (originalCode: string, course: Course) => string | null;
   onLoadSample: () => void;
+  onImageSelect: (file: File) => void;
+  onClearImage: () => void;
   onPreferenceChange: (value: string) => void;
   onInterpret: () => void;
 };
@@ -575,6 +591,54 @@ function InputView(props: InputViewProps) {
             Title
             <input id="course-title" className="course-name-input" value={props.courseTitle} onChange={(event) => props.onCourseTitleChange(event.target.value)} placeholder="Optional course title" />
           </label>
+        </div>
+
+        <div
+          className="image-import"
+          tabIndex={0}
+          onPaste={(event: ReactClipboardEvent<HTMLDivElement>) => {
+            const image = Array.from(event.clipboardData.files).find((file) => file.type.startsWith("image/"));
+            if (image) {
+              event.preventDefault();
+              props.onImageSelect(image);
+            }
+          }}
+          aria-label="Course screenshot paste area"
+        >
+          <div className="image-import-copy">
+            <span className="image-import-icon"><ImageUp size={20} aria-hidden="true" /></span>
+            <div>
+              <strong>Course screenshot</strong>
+              <p>Click this area and paste an image, or upload one. Recognition fills this course only, and every field remains editable.</p>
+            </div>
+          </div>
+          <label className={`image-upload-button ${props.imageLoading ? "disabled" : ""}`}>
+            {props.imageLoading ? <LoaderCircle className="spin" size={17} /> : <ImageUp size={17} />}
+            {props.imageLoading ? "Reading image" : "Choose image"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={props.imageLoading}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) props.onImageSelect(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {props.imagePreview && (
+            <div className="image-preview-wrap">
+              <img className="image-preview" src={props.imagePreview} alt="Course screenshot preview" />
+              <button className="icon-button danger" type="button" aria-label="Remove course screenshot" title="Remove screenshot" onClick={props.onClearImage}><Trash2 size={16} /></button>
+            </div>
+          )}
+          {props.imageName && <span className="image-file-name">{props.imageName}</span>}
+          {props.imageWarnings.length > 0 && (
+            <div className="image-warning" role="status">
+              <strong>Check the extracted data</strong>
+              <ul>{props.imageWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            </div>
+          )}
         </div>
 
         <fieldset className="section-builder">
@@ -741,6 +805,11 @@ function ReviewView({
       ? [`No classes before ${preferences.earliestStart}`]
       : []),
     ...(preferences.requireOpenSections ? ["Open sections only"] : []),
+    ...(preferences.allowedGapMinutes != null
+      ? [preferences.minimumLongGapMinutes != null
+        ? `Class gaps must be ${preferences.allowedGapMinutes} minutes or less, or at least ${preferences.minimumLongGapMinutes} minutes`
+        : `Class gaps must be ${preferences.allowedGapMinutes} minutes or less`]
+      : []),
     ...preferences.hardConstraints
   ];
   const softItems = [
@@ -905,6 +974,10 @@ function App() {
   const [courseError, setCourseError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageName, setImageName] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageWarnings, setImageWarnings] = useState<string[]>([]);
 
   const canOpenResults = useMemo(() => response !== null, [response]);
 
@@ -919,6 +992,9 @@ function App() {
       setCourseTitle("");
       setSectionDrafts([newSectionDraft(nextSectionKey)]);
       setNextSectionKey((current) => current + 1);
+      setImageName("");
+      setImagePreview("");
+      setImageWarnings([]);
       setCourseError("");
       setResponse(null);
     } catch (error) {
@@ -953,6 +1029,58 @@ function App() {
     setCourses(sampleCourses);
     setCourseError("");
     setResponse(null);
+  };
+
+  const importCourseImage = async (file: File) => {
+    const supportedTypes = ["image/png", "image/jpeg", "image/webp"];
+    if (!supportedTypes.includes(file.type)) {
+      setCourseError("Upload a PNG, JPEG, or WebP image.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setCourseError("The image must be 10 MB or smaller.");
+      return;
+    }
+
+    setImageLoading(true);
+    setImageName(file.name);
+    setImageWarnings([]);
+    setCourseError("");
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("The selected image could not be read."));
+        reader.readAsDataURL(file);
+      });
+      const imageBase64 = dataUrl.split(",", 2)[1];
+      if (!imageBase64) throw new Error("The selected image could not be read.");
+      setImagePreview(dataUrl);
+
+      const extracted = await apiRequest<CourseImageExtraction>("/api/courses/extract-from-image", {
+        imageBase64,
+        mediaType: file.type,
+        courseCodeHint: courseCode.trim() || null,
+        courseTitleHint: courseTitle.trim() || null
+      });
+      if (extracted.courses.length !== 1) {
+        throw new Error("Use one screenshot per course. Crop the image so it contains exactly one course.");
+      }
+      const extractedCourse = extracted.courses[0];
+      setCourseCode(extractedCourse.code);
+      setCourseTitle(extractedCourse.title ?? "");
+      const drafts = courseToDrafts(extractedCourse);
+      setSectionDrafts(drafts);
+      setNextSectionKey(Math.max(0, ...drafts.map((draft) => draft.key)) + 1);
+      setImageWarnings(extracted.warnings);
+      setPreferences(null);
+      setResponse(null);
+      setRequestError("");
+    } catch (error) {
+      setCourseError(error instanceof Error ? error.message : "Could not extract courses from the image.");
+    } finally {
+      setImageLoading(false);
+    }
   };
 
   const saveCourse = (originalCode: string, updatedCourse: Course) => {
@@ -1032,6 +1160,10 @@ function App() {
         courseError={courseError}
         requestError={requestError}
         loading={loading}
+        imageLoading={imageLoading}
+        imageName={imageName}
+        imagePreview={imagePreview}
+        imageWarnings={imageWarnings}
         onCourseCodeChange={(value) => { setCourseCode(value); setCourseError(""); }}
         onCourseTitleChange={(value) => { setCourseTitle(value); setCourseError(""); }}
         onSectionChange={updateSection}
@@ -1041,6 +1173,8 @@ function App() {
         onRemoveCourse={(code) => { setCourses((current) => current.filter((course) => course.code !== code)); setResponse(null); }}
         onSaveCourse={saveCourse}
         onLoadSample={loadSample}
+        onImageSelect={importCourseImage}
+        onClearImage={() => { setImageName(""); setImagePreview(""); setImageWarnings([]); }}
         onPreferenceChange={setPreferenceText}
         onInterpret={interpretPreferences}
       />}

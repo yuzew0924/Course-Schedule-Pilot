@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 from datetime import time
 from enum import Enum
 from typing import Literal, Self
@@ -261,6 +263,8 @@ class ParsedPreferences(APIModel):
     required_days_off: list[DayCode] = Field(default_factory=list)
     preferred_time_of_day: PreferredTimeOfDay = PreferredTimeOfDay.NONE
     gap_preference: GapPreference = GapPreference.NONE
+    allowed_gap_minutes: int | None = Field(default=None, ge=0)
+    minimum_long_gap_minutes: int | None = Field(default=None, ge=0)
     fixed_sections: list[str] = Field(default_factory=list)
     require_open_sections: StrictBool = True
     hard_constraints: list[str] = Field(default_factory=list)
@@ -331,6 +335,14 @@ class ParsedPreferences(APIModel):
             raise ValueError(
                 "needsClarification must be true when clarificationQuestions are set"
             )
+        if (
+            self.allowed_gap_minutes is not None
+            and self.minimum_long_gap_minutes is not None
+            and self.allowed_gap_minutes >= self.minimum_long_gap_minutes
+        ):
+            raise ValueError(
+                "allowedGapMinutes must be less than minimumLongGapMinutes"
+            )
         return self
 
     @field_serializer("earliest_start", when_used="json")
@@ -355,6 +367,8 @@ class ParsedPreferences(APIModel):
             preferred_days_off=self.preferred_days_off,
             preferred_time_of_day=self.preferred_time_of_day,
             gap_preference=self.gap_preference,
+            allowed_gap_minutes=self.allowed_gap_minutes,
+            minimum_long_gap_minutes=self.minimum_long_gap_minutes,
         )
 
 
@@ -411,6 +425,33 @@ class ParsePreferencesRequest(BaseModel):
         if not value.strip():
             raise ValueError("preferenceText must not be blank")
         return value
+
+
+class ExtractCoursesFromImageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    imageBase64: str = Field(min_length=1)
+    mediaType: Literal["image/png", "image/jpeg", "image/webp"]
+    courseCodeHint: str | None = Field(default=None, min_length=1)
+    courseTitleHint: str | None = Field(default=None, min_length=1)
+
+    @field_validator("imageBase64")
+    @classmethod
+    def validate_image_base64(cls, value: str) -> str:
+        try:
+            image_bytes = base64.b64decode(value, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise ValueError("imageBase64 must contain valid base64 data") from error
+        if not image_bytes:
+            raise ValueError("imageBase64 must not be empty")
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise ValueError("image must not exceed 10 MB")
+        return value
+
+
+class ExtractCoursesFromImageResponse(APIModel):
+    courses: list[Course] = Field(min_length=1)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class GenerateSchedulesApiRequest(BaseModel):

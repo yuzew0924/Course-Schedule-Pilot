@@ -11,7 +11,7 @@ from ..models import (
     SectionStatus,
     SectionType,
 )
-from .time_utils import meetings_overlap
+from .time_utils import DayCode, meetings_overlap, time_to_minutes
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,9 +214,14 @@ def schedule_satisfies_hard_constraints(
         return False
 
     required_days_off = set(request.preferences.required_days_off)
+    meetings_by_day: dict[DayCode, list[tuple[int, int]]] = {}
     for course_combination in candidate.courses:
         for selection in course_combination.selections:
             for meeting in selection.section.meetings:
+                for day in meeting.days:
+                    meetings_by_day.setdefault(day, []).append(
+                        (time_to_minutes(meeting.start_time), time_to_minutes(meeting.end_time))
+                    )
                 if required_days_off.intersection(meeting.days):
                     return False
                 if (
@@ -225,6 +230,19 @@ def schedule_satisfies_hard_constraints(
                     and meeting.start_time < request.preferences.earliest_start
                 ):
                     return False
+
+    allowed_gap = request.preferences.allowed_gap_minutes
+    minimum_long_gap = request.preferences.minimum_long_gap_minutes
+    if allowed_gap is not None:
+        for daily_meetings in meetings_by_day.values():
+            ordered = sorted(daily_meetings)
+            for before, after in zip(ordered, ordered[1:]):
+                gap = after[0] - before[1]
+                if gap <= allowed_gap:
+                    continue
+                if minimum_long_gap is not None and gap >= minimum_long_gap:
+                    continue
+                return False
 
     return not schedule_has_conflict(candidate)
 
@@ -287,7 +305,11 @@ def diagnose_no_schedules(request: ScheduleRequest) -> tuple[str, ...]:
             )
 
     if not warnings:
-        if (
+        if request.preferences.allowed_gap_minutes is not None:
+            warnings.append(
+                "Hard gap constraints eliminate the remaining combinations."
+            )
+        elif (
             request.preferences.required_days_off
             or (
                 request.preferences.earliest_start is not None

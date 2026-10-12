@@ -172,6 +172,33 @@ def test_generate_text_sends_strict_json_schema() -> None:
     }
 
 
+def test_generate_image_text_sends_inline_image() -> None:
+    responses = FakeResponses(result=FakeResponse('{"courses":[]}'))
+    client = AIClient(settings(), sdk_client=FakeSDKClient(responses))
+
+    result = asyncio.run(
+        client.generate_image_text(
+            instructions="Extract courses",
+            image_base64="aW1hZ2U=",
+            media_type="image/png",
+        )
+    )
+
+    assert result == '{"courses":[]}'
+    assert responses.last_request is not None
+    assert responses.last_request["input"][0]["content"] == [
+        {
+            "type": "input_text",
+            "text": "Extract every visible course section from this image.",
+        },
+        {
+            "type": "input_image",
+            "image_url": "data:image/png;base64,aW1hZ2U=",
+            "detail": "high",
+        },
+    ]
+
+
 @pytest.mark.parametrize(
     ("provider_error", "application_error"),
     [

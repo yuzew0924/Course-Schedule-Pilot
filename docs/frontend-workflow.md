@@ -5,8 +5,8 @@ options. Users do not need to call backend endpoints manually.
 
 ## Main Flow
 
-1. Enter a course name and add each possible lecture, quiz, or lab section row,
-   or select **Load sample data** for an immediate example.
+1. Upload a course screenshot, enter a course and its section rows manually, or
+   select **Load sample data** for an immediate example.
 2. Add the course and review the course count and generated section groups.
 3. Inspect or edit course metadata, section details, and linked lectures.
 4. Enter schedule preferences in natural language.
@@ -27,6 +27,11 @@ generic warning. **Confirm and generate** is disabled while either condition is
 unresolved. **Revise preferences** returns to the input screen with the original
 `preferenceText` intact, so the user can edit it and run parsing again.
 
+Explicit numeric gap requirements are displayed as hard constraints and sent to
+the solver as `allowedGapMinutes` and `minimumLongGapMinutes`. Free-form
+`hardConstraints` are explanatory only; executable rules must have a structured
+field so the UI never claims that an unenforced rule has been applied.
+
 ## Application States
 
 The UI provides feedback for initial input, preference parsing, schedule
@@ -39,6 +44,15 @@ exhaustion, overlapping fixed sections, hard time/day filters, and conflicts
 among all remaining combinations.
 
 ## Course Input Rules
+
+The per-course screenshot importer accepts clipboard paste plus PNG, JPEG, and
+WebP file selection up to 10 MB. It sends the image to
+`POST /api/courses/extract-from-image`, displays progress and any extraction
+warnings, and fills the current editable course draft. Each screenshot must
+contain exactly one course. After **Add course**, the source screenshot is
+discarded and only the validated course data remains. AI output cannot bypass
+the backend `Course` validation rules. Users should verify recognized section
+status, times, locations, and linked lectures before continuing.
 
 The course builder accepts a course code and repeatable section rows. Each row
 contains a component type, section ID, weekday codes, start time, and end time.
