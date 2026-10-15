@@ -11,7 +11,6 @@ import {
   LoaderCircle,
   Pencil,
   Plus,
-  RotateCcw,
   Sparkles,
   Trash2
 } from "lucide-react";
@@ -114,83 +113,17 @@ type CourseImageExtraction = {
   warnings: string[];
 };
 
+type CourseScreenshot = {
+  id: string;
+  name: string;
+  mediaType: string;
+  dataUrl: string;
+};
+
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
   /\/$/,
   ""
 );
-
-const sampleCourses: Course[] = [
-  {
-    code: "CSE 373",
-    title: "Data Structures and Algorithms",
-    groups: [
-      {
-        type: "lecture",
-        choose: 1,
-        sections: [
-          {
-            id: "A",
-            status: "open",
-            sln: "12301",
-            meetings: [
-              { days: ["M", "W", "F"], startTime: "09:30", endTime: "10:20", location: "KNE 120" }
-            ]
-          },
-          {
-            id: "B",
-            status: "open",
-            sln: "12302",
-            meetings: [
-              { days: ["M", "W", "F"], startTime: "11:30", endTime: "12:20", location: "KNE 120" }
-            ]
-          }
-        ]
-      },
-      {
-        type: "quiz",
-        choose: 1,
-        sections: [
-          {
-            id: "AA",
-            status: "open",
-            sln: "12303",
-            parentSectionId: "A",
-            meetings: [{ days: ["Th"], startTime: "12:30", endTime: "13:20", location: "LOW 101" }]
-          },
-          {
-            id: "AB",
-            status: "closed",
-            sln: "12304",
-            parentSectionId: "A",
-            meetings: [{ days: ["Th"], startTime: "14:30", endTime: "15:20", location: "LOW 102" }]
-          }
-        ]
-      }
-    ]
-  },
-  {
-    code: "INFO 370",
-    title: "Core Methods in Data Science",
-    groups: [
-      {
-        type: "lecture",
-        choose: 1,
-        sections: [
-          {
-            id: "A",
-            status: "open",
-            meetings: [{ days: ["T", "Th"], startTime: "10:30", endTime: "11:50" }]
-          },
-          {
-            id: "B",
-            status: "open",
-            meetings: [{ days: ["T", "Th"], startTime: "13:30", endTime: "14:50" }]
-          }
-        ]
-      }
-    ]
-  }
-];
 
 const defaultPreferences: ParsedPreferences = {
   earliestStart: null,
@@ -244,6 +177,64 @@ const newSectionDraft = (key: number, id = "A"): SectionDraft => ({
   location: "",
   parentSectionId: ""
 });
+
+function formatTime12(value: string): string {
+  const [hourText, minute = "00"] = value.split(":");
+  const hour = Number(hourText);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return value;
+  return `${hour % 12 || 12}:${minute} ${hour < 12 ? "AM" : "PM"}`;
+}
+
+function Time12Input({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [hourText = "09", minute = "00"] = value.split(":");
+  const hour24 = Number(hourText);
+  const period = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  const minuteOptions = Array.from(new Set(["00", "10", "20", "30", "40", "50", minute])).sort();
+  const update = (nextHour: number, nextMinute: string, nextPeriod: string) => {
+    const normalizedHour = nextHour % 12 + (nextPeriod === "PM" ? 12 : 0);
+    onChange(`${String(normalizedHour).padStart(2, "0")}:${nextMinute}`);
+  };
+  return (
+    <div className="time-12-input" role="group" aria-label={label}>
+      <select aria-label={`${label} hour`} value={hour12} onChange={(event) => update(Number(event.target.value), minute, period)}>
+        {Array.from({ length: 12 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+      </select>
+      <span>:</span>
+      <select aria-label={`${label} minute`} value={minute} onChange={(event) => update(hour12, event.target.value, period)}>
+        {minuteOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+      <select aria-label={`${label} period`} value={period} onChange={(event) => update(hour12, minute, event.target.value)}>
+        <option value="AM">AM</option><option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
+
+function mergeExtractedCourses(courses: Course[]): Course {
+  if (!courses.length) throw new Error("No course data was found in the selected screenshots.");
+  const codes = new Set(courses.map((course) => course.code));
+  if (codes.size !== 1) throw new Error("All screenshots must show the same course.");
+  const grouped = new Map<string, Map<string, Section>>();
+  courses.forEach((course) => course.groups.forEach((group) => {
+    const sections = grouped.get(group.type) ?? new Map<string, Section>();
+    group.sections.forEach((section) => sections.set(section.id, section));
+    grouped.set(group.type, sections);
+  }));
+  return {
+    code: courses[0].code,
+    title: courses.find((course) => course.title)?.title ?? null,
+    groups: Array.from(grouped, ([type, sections]) => ({ type, choose: 1, sections: Array.from(sections.values()) }))
+  };
+}
 
 function courseToDrafts(course: Course): SectionDraft[] {
   let key = 1;
@@ -494,8 +485,8 @@ function EditableCourse({
               <label>Status<select value={draft.status} onChange={(event) => updateDraft(draft.key, "status", event.target.value)}><option value="open">Open</option><option value="closed">Closed</option><option value="unknown">Unknown</option></select></label>
               <label>SLN<input value={draft.sln} onChange={(event) => updateDraft(draft.key, "sln", event.target.value)} placeholder="Optional" /></label>
               <label>Days<input value={draft.days} onChange={(event) => updateDraft(draft.key, "days", event.target.value)} placeholder="MWF" /></label>
-              <label>Start<input type="time" value={draft.startTime} onChange={(event) => updateDraft(draft.key, "startTime", event.target.value)} /></label>
-              <label>End<input type="time" value={draft.endTime} onChange={(event) => updateDraft(draft.key, "endTime", event.target.value)} /></label>
+              <label>Start<Time12Input label={`${draft.id} start time`} value={draft.startTime} onChange={(value) => updateDraft(draft.key, "startTime", value)} /></label>
+              <label>End<Time12Input label={`${draft.id} end time`} value={draft.endTime} onChange={(value) => updateDraft(draft.key, "endTime", value)} /></label>
               <label>Location<input value={draft.location} onChange={(event) => updateDraft(draft.key, "location", event.target.value)} placeholder="Optional" /></label>
               <label>Parent lecture<input value={draft.parentSectionId} onChange={(event) => updateDraft(draft.key, "parentSectionId", event.target.value)} placeholder={draft.type === "lecture" ? "Not applicable" : "A"} disabled={draft.type === "lecture"} /></label>
               <button className="icon-button remove-edit-row" type="button" aria-label={`Remove ${draft.id}`} disabled={drafts.length === 1} onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}><Trash2 size={17} /></button>
@@ -528,7 +519,7 @@ function EditableCourse({
             <div className="section-detail-row" key={`${section.id}-${meetingIndex}`}>
               <strong>{section.id}</strong>
               <span className={`status-badge ${section.status}`}>{section.status}</span>
-              <span>{meeting.days.join("")} · {meeting.startTime}–{meeting.endTime}</span>
+              <span>{meeting.days.join("")} · {formatTime12(meeting.startTime)}–{formatTime12(meeting.endTime)}</span>
               <span>{meeting.location || "Location not set"}</span>
               <span>{section.sln ? `SLN ${section.sln}` : "No SLN"}</span>
               {group.type !== "lecture" && <span className="parent-link">Linked to Lecture {section.parentSectionId || section.id[0]}</span>}
@@ -550,8 +541,7 @@ type InputViewProps = {
   requestError: string;
   loading: boolean;
   imageLoading: boolean;
-  imageName: string;
-  imagePreview: string;
+  screenshots: CourseScreenshot[];
   imageWarnings: string[];
   onCourseCodeChange: (value: string) => void;
   onCourseTitleChange: (value: string) => void;
@@ -561,9 +551,9 @@ type InputViewProps = {
   onAddCourse: () => void;
   onRemoveCourse: (code: string) => void;
   onSaveCourse: (originalCode: string, course: Course) => string | null;
-  onLoadSample: () => void;
   onImageSelect: (file: File) => void;
-  onClearImage: () => void;
+  onRemoveImage: (id: string) => void;
+  onExtractImages: () => void;
   onPreferenceChange: (value: string) => void;
   onInterpret: () => void;
 };
@@ -572,15 +562,7 @@ function InputView(props: InputViewProps) {
   return (
     <main className="input-layout">
       <section className="panel course-input-panel">
-        <div className="panel-heading">
-          <div>
-            <span className="eyebrow">Step 1</span>
-            <h2>Add a course</h2>
-          </div>
-          <button className="secondary-button" type="button" onClick={props.onLoadSample}>
-            <RotateCcw size={16} /> Load sample data
-          </button>
-        </div>
+        <div className="panel-heading"><div><span className="eyebrow">Step 1</span><h2>Add a course</h2></div></div>
 
         <div className="course-basics">
           <label className="field-label" htmlFor="course-code">
@@ -609,7 +591,7 @@ function InputView(props: InputViewProps) {
             <span className="image-import-icon"><ImageUp size={20} aria-hidden="true" /></span>
             <div>
               <strong>Course screenshot</strong>
-              <p>Click this area and paste an image, or upload one. Recognition fills this course only, and every field remains editable.</p>
+              <p>Paste or upload one or more screenshots for this course. Images are only read when you select Extract sections.</p>
             </div>
           </div>
           <label className={`image-upload-button ${props.imageLoading ? "disabled" : ""}`}>
@@ -619,20 +601,24 @@ function InputView(props: InputViewProps) {
               type="file"
               accept="image/png,image/jpeg,image/webp"
               disabled={props.imageLoading}
+              multiple
               onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) props.onImageSelect(file);
+                Array.from(event.target.files ?? []).forEach(props.onImageSelect);
                 event.target.value = "";
               }}
             />
           </label>
-          {props.imagePreview && (
-            <div className="image-preview-wrap">
-              <img className="image-preview" src={props.imagePreview} alt="Course screenshot preview" />
-              <button className="icon-button danger" type="button" aria-label="Remove course screenshot" title="Remove screenshot" onClick={props.onClearImage}><Trash2 size={16} /></button>
-            </div>
-          )}
-          {props.imageName && <span className="image-file-name">{props.imageName}</span>}
+          {props.screenshots.length > 0 && <div className="image-preview-grid">
+            {props.screenshots.map((screenshot, index) => <div className="image-preview-wrap" key={screenshot.id}>
+              <img className="image-preview" src={screenshot.dataUrl} alt={`Course screenshot preview ${index + 1}`} />
+              <button className="icon-button danger" type="button" aria-label={`Remove screenshot ${index + 1}`} title="Remove screenshot" onClick={() => props.onRemoveImage(screenshot.id)}><Trash2 size={16} /></button>
+              <span className="image-file-name">{screenshot.name}</span>
+            </div>)}
+          </div>}
+          {props.screenshots.length > 0 && <button className="extract-images-button" type="button" disabled={props.imageLoading} onClick={props.onExtractImages}>
+            {props.imageLoading ? <LoaderCircle className="spin" size={17} /> : <Sparkles size={17} />}
+            {props.imageLoading ? `Reading ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}` : `Extract sections from ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}`}
+          </button>}
           {props.imageWarnings.length > 0 && (
             <div className="image-warning" role="status">
               <strong>Check the extracted data</strong>
@@ -669,18 +655,8 @@ function InputView(props: InputViewProps) {
                 onChange={(event) => props.onSectionChange(section.key, "days", event.target.value)}
                 placeholder="MWF"
               />
-              <input
-                aria-label={`Section ${section.key} start time`}
-                type="time"
-                value={section.startTime}
-                onChange={(event) => props.onSectionChange(section.key, "startTime", event.target.value)}
-              />
-              <input
-                aria-label={`Section ${section.key} end time`}
-                type="time"
-                value={section.endTime}
-                onChange={(event) => props.onSectionChange(section.key, "endTime", event.target.value)}
-              />
+              <Time12Input label={`Section ${section.key} start time`} value={section.startTime} onChange={(value) => props.onSectionChange(section.key, "startTime", value)} />
+              <Time12Input label={`Section ${section.key} end time`} value={section.endTime} onChange={(value) => props.onSectionChange(section.key, "endTime", value)} />
               <button
                 className="icon-button"
                 type="button"
@@ -912,7 +888,7 @@ function Calendar({ schedule }: { schedule: RankedSchedule }) {
             return (
               <article className={`calendar-event ${courseColors.get(section.courseCode)}`} style={style} key={`${section.courseCode}-${section.sectionId}-${day}-${index}`}>
                 <strong>{section.courseCode} {section.sectionId}</strong>
-                <span>{meeting.startTime} - {meeting.endTime}</span>
+                <span>{formatTime12(meeting.startTime)} - {formatTime12(meeting.endTime)}</span>
                 {meeting.location && <span>{meeting.location}</span>}
               </article>
             );
@@ -966,17 +942,14 @@ function App() {
   ]);
   const [nextSectionKey, setNextSectionKey] = useState(2);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [preferenceText, setPreferenceText] = useState(
-    "No classes before 10:00 if possible, prefer Friday off, and use open sections only."
-  );
+  const [preferenceText, setPreferenceText] = useState("");
   const [preferences, setPreferences] = useState<ParsedPreferences | null>(null);
   const [response, setResponse] = useState<GenerateResponse | null>(null);
   const [courseError, setCourseError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
-  const [imageName, setImageName] = useState("");
-  const [imagePreview, setImagePreview] = useState("");
+  const [screenshots, setScreenshots] = useState<CourseScreenshot[]>([]);
   const [imageWarnings, setImageWarnings] = useState<string[]>([]);
 
   const canOpenResults = useMemo(() => response !== null, [response]);
@@ -992,8 +965,7 @@ function App() {
       setCourseTitle("");
       setSectionDrafts([newSectionDraft(nextSectionKey)]);
       setNextSectionKey((current) => current + 1);
-      setImageName("");
-      setImagePreview("");
+      setScreenshots([]);
       setImageWarnings([]);
       setCourseError("");
       setResponse(null);
@@ -1025,13 +997,7 @@ function App() {
     setNextSectionKey((current) => current + 1);
   };
 
-  const loadSample = () => {
-    setCourses(sampleCourses);
-    setCourseError("");
-    setResponse(null);
-  };
-
-  const importCourseImage = async (file: File) => {
+  const queueCourseImage = async (file: File) => {
     const supportedTypes = ["image/png", "image/jpeg", "image/webp"];
     if (!supportedTypes.includes(file.type)) {
       setCourseError("Upload a PNG, JPEG, or WebP image.");
@@ -1042,8 +1008,6 @@ function App() {
       return;
     }
 
-    setImageLoading(true);
-    setImageName(file.name);
     setImageWarnings([]);
     setCourseError("");
     try {
@@ -1053,31 +1017,44 @@ function App() {
         reader.onerror = () => reject(new Error("The selected image could not be read."));
         reader.readAsDataURL(file);
       });
-      const imageBase64 = dataUrl.split(",", 2)[1];
-      if (!imageBase64) throw new Error("The selected image could not be read.");
-      setImagePreview(dataUrl);
+      setScreenshots((current) => [...current, { id: `${Date.now()}-${current.length}-${file.name}`, name: file.name, mediaType: file.type, dataUrl }]);
+    } catch (error) {
+      setCourseError(error instanceof Error ? error.message : "Could not add the image.");
+    }
+  };
 
-      const extracted = await apiRequest<CourseImageExtraction>("/api/courses/extract-from-image", {
-        imageBase64,
-        mediaType: file.type,
-        courseCodeHint: courseCode.trim() || null,
-        courseTitleHint: courseTitle.trim() || null
-      });
-      if (extracted.courses.length !== 1) {
-        throw new Error("Use one screenshot per course. Crop the image so it contains exactly one course.");
+  const extractCourseImages = async () => {
+    if (!screenshots.length) return;
+    setImageLoading(true);
+    setImageWarnings([]);
+    setCourseError("");
+    try {
+      const results = await Promise.all(screenshots.map((screenshot) => {
+        const imageBase64 = screenshot.dataUrl.split(",", 2)[1];
+        if (!imageBase64) throw new Error(`${screenshot.name} could not be read.`);
+        return apiRequest<CourseImageExtraction>("/api/courses/extract-from-image", {
+          imageBase64,
+          mediaType: screenshot.mediaType,
+          courseCodeHint: courseCode.trim() || null,
+          courseTitleHint: courseTitle.trim() || null
+        });
+      }));
+      const extractedCourses = results.flatMap((result) => result.courses);
+      if (results.some((result) => result.courses.length !== 1)) {
+        throw new Error("Each screenshot must contain exactly one course.");
       }
-      const extractedCourse = extracted.courses[0];
+      const extractedCourse = mergeExtractedCourses(extractedCourses);
       setCourseCode(extractedCourse.code);
       setCourseTitle(extractedCourse.title ?? "");
       const drafts = courseToDrafts(extractedCourse);
       setSectionDrafts(drafts);
       setNextSectionKey(Math.max(0, ...drafts.map((draft) => draft.key)) + 1);
-      setImageWarnings(extracted.warnings);
+      setImageWarnings(results.flatMap((result, index) => result.warnings.map((warning) => `Screenshot ${index + 1}: ${warning}`)));
       setPreferences(null);
       setResponse(null);
       setRequestError("");
     } catch (error) {
-      setCourseError(error instanceof Error ? error.message : "Could not extract courses from the image.");
+      setCourseError(error instanceof Error ? error.message : "Could not extract courses from the screenshots.");
     } finally {
       setImageLoading(false);
     }
@@ -1161,8 +1138,7 @@ function App() {
         requestError={requestError}
         loading={loading}
         imageLoading={imageLoading}
-        imageName={imageName}
-        imagePreview={imagePreview}
+        screenshots={screenshots}
         imageWarnings={imageWarnings}
         onCourseCodeChange={(value) => { setCourseCode(value); setCourseError(""); }}
         onCourseTitleChange={(value) => { setCourseTitle(value); setCourseError(""); }}
@@ -1172,9 +1148,9 @@ function App() {
         onAddCourse={addCourse}
         onRemoveCourse={(code) => { setCourses((current) => current.filter((course) => course.code !== code)); setResponse(null); }}
         onSaveCourse={saveCourse}
-        onLoadSample={loadSample}
-        onImageSelect={importCourseImage}
-        onClearImage={() => { setImageName(""); setImagePreview(""); setImageWarnings([]); }}
+        onImageSelect={queueCourseImage}
+        onRemoveImage={(id) => { setScreenshots((current) => current.filter((screenshot) => screenshot.id !== id)); setImageWarnings([]); }}
+        onExtractImages={extractCourseImages}
         onPreferenceChange={setPreferenceText}
         onInterpret={interpretPreferences}
       />}

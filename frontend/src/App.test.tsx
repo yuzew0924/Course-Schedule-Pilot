@@ -34,6 +34,23 @@ function mockApiResponse(payload: object) {
   );
 }
 
+function addBasicCourse(code = "CSE 373") {
+  fireEvent.change(screen.getByLabelText("Course code"), { target: { value: code } });
+  fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+}
+
+function addEditableCourse() {
+  fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 373" } });
+  fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Data Structures and Algorithms" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
+  fireEvent.change(screen.getByLabelText("Section 2 ID"), { target: { value: "B" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
+  fireEvent.change(screen.getByLabelText("Section 3 type"), { target: { value: "quiz" } });
+  fireEvent.change(screen.getByLabelText("Section 3 ID"), { target: { value: "AA" } });
+  fireEvent.change(screen.getByLabelText("Section 3 days"), { target: { value: "Th" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+}
+
 describe("App", () => {
   afterEach(() => {
     cleanup();
@@ -55,6 +72,8 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "Course Schedule Pilot" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Describe your ideal schedule")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Load sample data" })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Checking backend");
     expect(await screen.findByText("Backend online")).toBeInTheDocument();
   });
@@ -92,24 +111,7 @@ describe("App", () => {
     expect(screen.getByText("Linked to Lecture A")).toBeInTheDocument();
   });
 
-  it("loads sample data and immediately displays its course summary", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "ok" }), { status: 200 }))
-    );
-    render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
-
-    expect(screen.getByRole("heading", { name: "Added courses" })).toBeInTheDocument();
-    expect(screen.getByText("CSE 373")).toBeInTheDocument();
-    expect(screen.getByText("INFO 370")).toBeInTheDocument();
-    expect(screen.getAllByText("Linked to Lecture A")).toHaveLength(2);
-    expect(screen.getAllByText("KNE 120")).toHaveLength(2);
-    expect(screen.getByText("SLN 12303")).toBeInTheDocument();
-  });
-
-  it("uploads a per-course screenshot, fills editable fields, and discards the image after adding", async () => {
+  it("queues multiple course screenshots and extracts only after manual confirmation", async () => {
     const fetchMock = vi.fn().mockImplementation((input: string, init?: RequestInit) => {
       if (!init?.method) {
         return Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
@@ -130,21 +132,30 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    const file = new File(["image"], "schedule.png", { type: "image/png" });
-    fireEvent.change(screen.getByLabelText(/Choose image/), { target: { files: [file] } });
+    const firstFile = new File(["image-one"], "lectures.png", { type: "image/png" });
+    const secondFile = new File(["image-two"], "quizzes.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/Choose image/), { target: { files: [firstFile, secondFile] } });
+
+    expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
+    expect(screen.getByAltText("Course screenshot preview 2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Extract sections from 2 screenshots" }));
 
     expect(await screen.findByDisplayValue("CSE 414")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("09:30")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("12:30")).toBeInTheDocument();
-    expect(screen.getByText("Verify the room number.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole("group", { name: "Section 1 start time" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Section 2 start time period" })).toHaveValue("PM");
+    expect(screen.getAllByText(/Verify the room number\./)).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 
     expect(await screen.findByText("CSE 414")).toBeInTheDocument();
     expect(screen.getByText("Linked to Lecture A")).toBeInTheDocument();
-    expect(screen.queryByAltText("Course screenshot preview")).not.toBeInTheDocument();
+    expect(screen.getByText("Th · 12:30 PM–1:20 PM")).toBeInTheDocument();
+    expect(screen.queryByAltText(/Course screenshot preview/)).not.toBeInTheDocument();
   });
 
-  it("accepts a course screenshot pasted from the clipboard", async () => {
+  it("accepts a pasted screenshot without parsing it automatically", async () => {
     const fetchMock = vi.fn().mockImplementation((_input: string, init?: RequestInit) => {
       if (!init?.method) return Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
       return Promise.resolve(new Response(JSON.stringify({
@@ -160,8 +171,12 @@ describe("App", () => {
       clipboardData: { files: [pastedImage] }
     });
 
+    expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Extract sections from 1 screenshot" }));
     expect(await screen.findByDisplayValue("MATH 208")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("10:30")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Section 1 start time hour" })).toHaveValue("10");
+    expect(screen.getByRole("combobox", { name: "Section 1 start time period" })).toHaveValue("AM");
   });
 
   it("uses safe defaults when preference text is blank", async () => {
@@ -171,7 +186,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
     fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), {
       target: { value: "   " }
     });
@@ -276,7 +291,8 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
+    fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), { target: { value: "Prefer afternoon classes" } });
     fireEvent.click(screen.getByRole("button", { name: /Interpret preferences/ }));
 
     expect(await screen.findByRole("heading", { name: "Confirm your schedule requirements" })).toBeInTheDocument();
@@ -299,7 +315,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", mockApiResponse(conflictPreferences));
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
     fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), {
       target: { value: "Keep Friday free and require CSE 373 A" }
     });
@@ -321,7 +337,8 @@ describe("App", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
+    fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), { target: { value: "Prefer later classes" } });
     fireEvent.click(screen.getByRole("button", { name: /Interpret preferences/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("courses.0.code: Field required");
 
@@ -331,7 +348,8 @@ describe("App", () => {
       return Promise.resolve(new Response(JSON.stringify({ error: { message: "AI preference parsing timed out" } }), { status: 504 }));
     }));
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
+    fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), { target: { value: "Prefer later classes" } });
     fireEvent.click(screen.getByRole("button", { name: /Interpret preferences/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("AI preference parsing timed out");
   });
@@ -339,7 +357,8 @@ describe("App", () => {
   it("shows a specific backend-unavailable message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
+    fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), { target: { value: "Prefer later classes" } });
     fireEvent.click(screen.getByRole("button", { name: /Interpret preferences/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Backend unavailable at");
@@ -361,7 +380,7 @@ describe("App", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addBasicCourse();
     fireEvent.change(screen.getByLabelText("Describe your ideal schedule"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: /Interpret preferences/ }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm and generate/ }));
@@ -403,7 +422,7 @@ describe("App", () => {
       vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "ok" }), { status: 200 }))
     );
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Load sample data" }));
+    addEditableCourse();
     fireEvent.click(screen.getByRole("button", { name: "Edit CSE 373" }));
 
     fireEvent.change(screen.getAllByLabelText("Course code").at(-1)!, { target: { value: "CSE 374" } });

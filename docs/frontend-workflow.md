@@ -5,8 +5,8 @@ options. Users do not need to call backend endpoints manually.
 
 ## Main Flow
 
-1. Upload a course screenshot, enter a course and its section rows manually, or
-   select **Load sample data** for an immediate example.
+1. Queue one or more course screenshots and manually extract their data, or
+   enter section rows manually.
 2. Add the course and review the course count and generated section groups.
 3. Inspect or edit course metadata, section details, and linked lectures.
 4. Enter schedule preferences in natural language.
@@ -45,17 +45,21 @@ among all remaining combinations.
 
 ## Course Input Rules
 
-The per-course screenshot importer accepts clipboard paste plus PNG, JPEG, and
-WebP file selection up to 10 MB. It sends the image to
-`POST /api/courses/extract-from-image`, displays progress and any extraction
-warnings, and fills the current editable course draft. Each screenshot must
-contain exactly one course. After **Add course**, the source screenshot is
-discarded and only the validated course data remains. AI output cannot bypass
-the backend `Course` validation rules. Users should verify recognized section
-status, times, locations, and linked lectures before continuing.
+The per-course screenshot importer accepts multiple clipboard-pasted or uploaded
+PNG, JPEG, and WebP images up to 10 MB each. Adding an image only queues its
+preview; recognition starts only after the user selects **Extract sections**.
+Each image is sent to `POST /api/courses/extract-from-image`, and the validated
+results are merged into the current editable course draft. Every screenshot
+must contain exactly one course and all screenshots must represent the same
+course. After **Add course**, the source screenshots are discarded and only the
+validated course data remains. AI output cannot bypass the backend `Course`
+validation rules. Users should verify recognized section status, times,
+locations, and linked lectures before continuing.
 
 The course builder accepts a course code and repeatable section rows. Each row
 contains a component type, section ID, weekday codes, start time, and end time.
+Time controls use a 12-hour AM/PM format and convert to the API's `HH:MM` format
+before validation and submission.
 All entered sections are treated as available (`open`). The frontend groups rows
 by component type and sends the resulting schema to the backend; users never
 need to write JSON.

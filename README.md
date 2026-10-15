@@ -102,7 +102,8 @@ http://localhost:5173
 
 Example workflow:
 
-1. Upload a clear PNG, JPEG, or WebP course screenshot, or add a course manually.
+1. Queue one or more clear PNG, JPEG, or WebP screenshots for a course and
+   manually extract their sections, or add the course manually.
 2. Review and edit each extracted lecture and quiz section.
 3. Lock fixed sections, such as `CSE 414 C` and `CSE 414 CD`.
 4. Set preferences, such as no classes before `9:30 AM` unless unavoidable.
@@ -131,19 +132,19 @@ Numeric hard gap rules are structured and enforced by the solver. For example,
 `allowedGapMinutes: 10` and `minimumLongGapMinutes: 120`; schedules with an
 11–119 minute same-day gap are filtered out rather than merely ranked lower.
 
-For a no-setup demonstration, select **Load sample data**. The bundled courses
-render a structural summary and contain at least one conflict-free combination.
 Preference text accepts English or Chinese. Blank preference text is handled as
 an explicit default of open sections only, with no additional ranking
 preferences.
 
 ### Screenshot Course Extraction
 
-In the **Add a course** panel, focus the course screenshot area and paste an
-image from the clipboard, or select **Choose image** for a PNG, JPEG, or WebP
-file up to 10 MB. Use one screenshot per course. The backend sends the image to
-the configured vision-capable model and
-validates the structured result against the same `Course`, `SectionGroup`,
+In the **Add a course** panel, focus the course screenshot area and paste images
+from the clipboard, or select **Choose image** for one or more PNG, JPEG, or
+WebP files up to 10 MB each. Screenshots are queued without being parsed. Select
+**Extract sections** when all screenshots for that course are ready. Each image
+must contain exactly one course, and all queued images must represent the same
+course. The backend sends the images to the configured vision-capable model and
+merges their validated results against the same `Course`, `SectionGroup`,
 `Section`, and `Meeting` models used by manual entry. Recognition fills the
 current course draft, where every course code, section ID, status, SLN, weekday,
 time, location, and linked lecture can be corrected before selecting **Add
@@ -213,7 +214,8 @@ lecture+quiz+lab courses in
   must be unique within the request.
 - JSON uses `camelCase`. Unknown fields are rejected by the backend models.
 - `days` only accepts `M`, `T`, `W`, `Th`, and `F`.
-- `startTime`, `endTime`, and `earliestStart` use strict 24-hour `HH:MM`, such
+- The UI displays and edits meeting times in 12-hour AM/PM format. API fields
+  `startTime`, `endTime`, and `earliestStart` use strict 24-hour `HH:MM`, such
   as `09:30`. Every meeting must satisfy `startTime < endTime`.
 - A section group's `choose` value is optional, defaults to `1`, and cannot use
   any other value. An empty declared group produces zero schedules.
@@ -413,9 +415,9 @@ gap contribution and gap shape does not affect ranking.
 
 ### Reviewing and Editing Courses
 
-After a course is added or sample data is loaded, the frontend displays its
-code, title, groups, section IDs, status, SLN, meeting days and times, location,
-and linked lecture. Each course has an edit action covering all of those fields.
+After a course is added, the frontend displays its code, title, groups, section
+IDs, status, SLN, meeting days and times, location, and linked lecture. Each
+course has an edit action covering all of those fields.
 Saving runs frontend structural validation again and clears stale preference and
 schedule results before the next generation request.
 

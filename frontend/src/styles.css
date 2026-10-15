@@ -56,10 +56,13 @@ h1, h2, h3, p { margin-top: 0; }
 .image-upload-button:hover { border-color: #0b7780; background: #edf8f7; }
 .image-upload-button.disabled { cursor: wait; opacity: 0.65; }
 .image-upload-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
-.image-file-name { grid-column: 1 / -1; overflow: hidden; color: #52627a; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
-.image-preview-wrap { position: relative; grid-column: 1 / -1; width: min(100%, 420px); }
+.image-preview-grid { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.image-file-name { display: block; overflow: hidden; padding-top: 5px; color: #52627a; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+.image-preview-wrap { position: relative; min-width: 0; }
 .image-preview { display: block; width: 100%; max-height: 180px; border: 1px solid #cbd6e3; border-radius: 6px; object-fit: contain; background: #fff; }
 .image-preview-wrap .icon-button { position: absolute; top: 5px; right: 5px; border: 1px solid #d8e0e8; background: #fff; }
+.extract-images-button { display: inline-flex; grid-column: 1 / -1; min-height: 38px; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 6px; padding: 0 14px; color: #fff; background: #0b6670; font-size: 0.76rem; font-weight: 800; }
+.extract-images-button:hover:not(:disabled) { background: #075762; }
 .image-warning { grid-column: 1 / -1; border-left: 3px solid #d39326; padding: 7px 9px; color: #7a4a00; background: #fff9eb; font-size: 0.7rem; }
 .image-warning ul { margin: 4px 0 0; padding-left: 18px; }
 .course-basics .field-label { margin: 0; }
@@ -70,6 +73,9 @@ h1, h2, h3, p { margin-top: 0; }
 .section-column-labels { margin-bottom: 5px; padding: 0 4px; color: #718096; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
 .section-input-row { margin-bottom: 8px; }
 .section-input-row input, .section-input-row select { width: 100%; min-width: 0; height: 40px; border: 1px solid #cbd6e3; border-radius: 6px; padding: 0 9px; color: #142641; background: #fff; }
+.time-12-input { display: grid; grid-template-columns: minmax(42px, 0.8fr) auto minmax(48px, 0.9fr) minmax(54px, 1fr); align-items: center; gap: 3px; }
+.time-12-input select { min-width: 0; padding: 0 4px; text-align: center; }
+.section-edit-card .time-12-input { margin-top: 4px; }
 .icon-button { display: grid; width: 36px; height: 40px; place-items: center; border: 0; border-radius: 5px; color: #637186; background: transparent; }
 .icon-button:hover:not(:disabled) { color: #a41e22; background: #fff1f1; }
 .add-section-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; border: 0; padding: 0 5px; color: #075762; background: transparent; font-weight: 800; }
