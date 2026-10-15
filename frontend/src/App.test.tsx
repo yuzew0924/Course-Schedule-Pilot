@@ -34,20 +34,31 @@ function mockApiResponse(payload: object) {
   );
 }
 
+function setMeeting(section: number, days = "MWF") {
+  fireEvent.change(screen.getByLabelText(`Section ${section} days`), { target: { value: days } });
+  fireEvent.change(screen.getByLabelText(`Section ${section} start time hour`), { target: { value: "9" } });
+  fireEvent.change(screen.getByLabelText(`Section ${section} start time minute`), { target: { value: "30" } });
+  fireEvent.change(screen.getByLabelText(`Section ${section} end time hour`), { target: { value: "10" } });
+  fireEvent.change(screen.getByLabelText(`Section ${section} end time minute`), { target: { value: "20" } });
+}
+
 function addBasicCourse(code = "CSE 373") {
   fireEvent.change(screen.getByLabelText("Course code"), { target: { value: code } });
+  setMeeting(1);
   fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 }
 
 function addEditableCourse() {
   fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 373" } });
   fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Data Structures and Algorithms" } });
+  setMeeting(1);
   fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
   fireEvent.change(screen.getByLabelText("Section 2 ID"), { target: { value: "B" } });
+  setMeeting(2);
   fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
   fireEvent.change(screen.getByLabelText("Section 3 type"), { target: { value: "quiz" } });
   fireEvent.change(screen.getByLabelText("Section 3 ID"), { target: { value: "AA" } });
-  fireEvent.change(screen.getByLabelText("Section 3 days"), { target: { value: "Th" } });
+  setMeeting(3, "Th");
   fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 }
 
@@ -74,6 +85,9 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Course Schedule Pilot" })).toBeInTheDocument();
     expect(screen.getByLabelText("Describe your ideal schedule")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Load sample data" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Section 1 days")).toHaveValue("");
+    expect(screen.getByLabelText("Section 1 start time hour")).toHaveValue("");
+    expect(screen.getByLabelText("Section 1 end time hour")).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent("Checking backend");
     expect(await screen.findByText("Backend online")).toBeInTheDocument();
   });
@@ -93,6 +107,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "CSE 414" }
     });
+    setMeeting(1);
     fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     fireEvent.change(screen.getByLabelText("Section 2 type"), {
       target: { value: "quiz" }
@@ -100,9 +115,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Section 2 ID"), {
       target: { value: "AA" }
     });
-    fireEvent.change(screen.getByLabelText("Section 2 days"), {
-      target: { value: "Th" }
-    });
+    setMeeting(2, "Th");
     fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 
     expect(await screen.findByText("CSE 414")).toBeInTheDocument();
@@ -139,7 +152,8 @@ describe("App", () => {
     expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
     expect(screen.getByAltText("Course screenshot preview 2")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Enter course code to extract" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Enter course code to extract" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter the course code before extracting");
 
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 414" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract sections from 2 screenshots" }));
@@ -175,7 +189,8 @@ describe("App", () => {
 
     expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Enter course code to extract" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Enter course code to extract" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter the course code before extracting");
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "MATH 208" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract sections from 1 screenshot" }));
     expect(await screen.findByDisplayValue("MATH 208")).toBeInTheDocument();
@@ -215,6 +230,7 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 414" } });
+    setMeeting(1);
     fireEvent.change(screen.getByLabelText("Section 1 days"), { target: { value: "Sunday" } });
     fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 
@@ -405,6 +421,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "CHEM 142" }
     });
+    setMeeting(1);
     fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     fireEvent.change(screen.getByLabelText("Section 2 type"), {
       target: { value: "lab" }
@@ -412,6 +429,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Section 2 ID"), {
       target: { value: "AL" }
     });
+    setMeeting(2);
     fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 
     expect(await screen.findByText("CHEM 142")).toBeInTheDocument();

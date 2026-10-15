@@ -169,9 +169,9 @@ const newSectionDraft = (key: number, id = "A"): SectionDraft => ({
   key,
   type: "lecture",
   id,
-  days: "MWF",
-  startTime: "09:30",
-  endTime: "10:20",
+  days: "",
+  startTime: "",
+  endTime: "",
   status: "open",
   sln: "",
   location: "",
@@ -194,25 +194,32 @@ function Time12Input({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const [hourText = "09", minute = "00"] = value.split(":");
-  const hour24 = Number(hourText);
-  const period = hour24 >= 12 ? "PM" : "AM";
-  const hour12 = hour24 % 12 || 12;
-  const minuteOptions = Array.from(new Set(["00", "10", "20", "30", "40", "50", minute])).sort();
-  const update = (nextHour: number, nextMinute: string, nextPeriod: string) => {
-    const normalizedHour = nextHour % 12 + (nextPeriod === "PM" ? 12 : 0);
-    onChange(`${String(normalizedHour).padStart(2, "0")}:${nextMinute}`);
+  const [hourText = "", parsedMinute = ""] = value.split(":");
+  const hour24 = hourText ? Number(hourText) : null;
+  const period = hour24 === null ? "" : hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 === null ? "" : String(hour24 % 12 || 12);
+  const minute = hour24 === null ? "" : parsedMinute;
+  const minuteOptions = Array.from(new Set(["00", "10", "20", "30", "40", "50", minute].filter(Boolean))).sort();
+  const update = (nextHour: string, nextMinute: string, nextPeriod: string) => {
+    const completedHour = Number(nextHour || "12");
+    const completedMinute = nextMinute || "00";
+    const completedPeriod = nextPeriod || "AM";
+    const normalizedHour = completedHour % 12 + (completedPeriod === "PM" ? 12 : 0);
+    onChange(`${String(normalizedHour).padStart(2, "0")}:${completedMinute}`);
   };
   return (
     <div className="time-12-input" role="group" aria-label={label}>
-      <select aria-label={`${label} hour`} value={hour12} onChange={(event) => update(Number(event.target.value), minute, period)}>
+      <select aria-label={`${label} hour`} value={hour12} onChange={(event) => update(event.target.value, minute, period)}>
+        <option value="" disabled>Hour</option>
         {Array.from({ length: 12 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
       </select>
       <span>:</span>
       <select aria-label={`${label} minute`} value={minute} onChange={(event) => update(hour12, event.target.value, period)}>
+        <option value="" disabled>Min</option>
         {minuteOptions.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
       <select aria-label={`${label} period`} value={period} onChange={(event) => update(hour12, minute, event.target.value)}>
+        <option value="" disabled>AM/PM</option>
         <option value="AM">AM</option><option value="PM">PM</option>
       </select>
     </div>
@@ -615,7 +622,7 @@ function InputView(props: InputViewProps) {
               <span className="image-file-name">{screenshot.name}</span>
             </div>)}
           </div>}
-          {props.screenshots.length > 0 && <button className="extract-images-button" type="button" disabled={props.imageLoading || !props.courseCode.trim()} onClick={props.onExtractImages}>
+          {props.screenshots.length > 0 && <button className="extract-images-button" type="button" disabled={props.imageLoading} aria-disabled={!props.courseCode.trim()} onClick={props.onExtractImages}>
             {props.imageLoading ? <LoaderCircle className="spin" size={17} /> : <Sparkles size={17} />}
             {props.imageLoading
               ? `Reading ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}`
