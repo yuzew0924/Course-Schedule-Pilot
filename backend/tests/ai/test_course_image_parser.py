@@ -2,8 +2,10 @@ import base64
 import json
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.ai.client import AIInvalidResponseError
 from app.ai.course_image_parser import CourseImageParser, normalize_extracted_courses
 from app.main import app, get_course_image_parser
 
@@ -137,6 +139,18 @@ def test_normalization_merges_duplicate_groups_and_uses_course_hint() -> None:
     assert [section["id"] for section in course["groups"][0]["sections"]] == ["A", "B"]
     assert course["groups"][0]["sections"][0]["meetings"][0]["startTime"] == "12:30"
     assert course["groups"][0]["sections"][1]["meetings"][0]["startTime"] == "08:30"
+
+
+def test_course_image_parser_explains_when_no_sections_are_found() -> None:
+    parser = CourseImageParser(FakeImageClient({
+        "courses": [{"code": "CSE 414", "title": None, "groups": []}],
+        "warnings": [],
+    }))
+
+    import asyncio
+
+    with pytest.raises(AIInvalidResponseError, match="no lecture, quiz, or lab sections were found"):
+        asyncio.run(parser.parse("aW1hZ2U=", "image/png", course_code_hint="CSE 414"))
 
 
 def test_extract_courses_endpoint_returns_editable_courses() -> None:

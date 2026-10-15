@@ -62,10 +62,24 @@ class CourseImageParser:
         except (json.JSONDecodeError, TypeError, ValidationError) as error:
             detail = "invalid JSON"
             if isinstance(error, ValidationError) and error.errors():
-                detail = str(error.errors()[0].get("msg", "invalid course data"))
+                validation_errors = error.errors()
+                empty_collection_error = next(
+                    (
+                        item for item in validation_errors
+                        if item.get("type") == "too_short"
+                        and any(part in {"courses", "groups", "sections"} for part in item.get("loc", ()))
+                    ),
+                    None,
+                )
+                detail = (
+                    "no lecture, quiz, or lab sections were found in the screenshot"
+                    if empty_collection_error
+                    else str(validation_errors[0].get("msg", "invalid course data"))
+                )
             raise AIInvalidResponseError(
                 f"Course recognition could not be validated: {detail}. "
-                "Try a tighter crop or correct the course manually."
+                "Confirm the course code, use a clear crop that includes the section rows, "
+                "or enter the sections manually."
             ) from error
 
 

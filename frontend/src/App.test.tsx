@@ -139,7 +139,9 @@ describe("App", () => {
     expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
     expect(screen.getByAltText("Course screenshot preview 2")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Enter course code to extract" })).toBeDisabled();
 
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 414" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract sections from 2 screenshots" }));
 
     expect(await screen.findByDisplayValue("CSE 414")).toBeInTheDocument();
@@ -173,6 +175,8 @@ describe("App", () => {
 
     expect(await screen.findByAltText("Course screenshot preview 1")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Enter course code to extract" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "MATH 208" } });
     fireEvent.click(screen.getByRole("button", { name: "Extract sections from 1 screenshot" }));
     expect(await screen.findByDisplayValue("MATH 208")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Section 1 start time hour" })).toHaveValue("10");

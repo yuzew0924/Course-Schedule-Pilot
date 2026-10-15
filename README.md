@@ -141,9 +141,11 @@ preferences.
 In the **Add a course** panel, focus the course screenshot area and paste images
 from the clipboard, or select **Choose image** for one or more PNG, JPEG, or
 WebP files up to 10 MB each. Screenshots are queued without being parsed. Select
-**Extract sections** when all screenshots for that course are ready. Each image
-must contain exactly one course, and all queued images must represent the same
-course. The backend sends the images to the configured vision-capable model and
+**Extract sections** when all screenshots for that course are ready. Images may
+be uploaded before entering the course code, but the code is required before
+extraction so it can be sent as a recognition hint. Each image must contain
+exactly one course, and all queued images must represent the same course. The
+backend sends the images to the configured vision-capable model and
 merges their validated results against the same `Course`, `SectionGroup`,
 `Section`, and `Meeting` models used by manual entry. Recognition fills the
 current course draft, where every course code, section ID, status, SLN, weekday,

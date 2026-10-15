@@ -591,7 +591,7 @@ function InputView(props: InputViewProps) {
             <span className="image-import-icon"><ImageUp size={20} aria-hidden="true" /></span>
             <div>
               <strong>Course screenshot</strong>
-              <p>Paste or upload one or more screenshots for this course. Images are only read when you select Extract sections.</p>
+              <p>Upload screenshots first, then enter the course code. Images are only read when you select Extract sections.</p>
             </div>
           </div>
           <label className={`image-upload-button ${props.imageLoading ? "disabled" : ""}`}>
@@ -615,9 +615,13 @@ function InputView(props: InputViewProps) {
               <span className="image-file-name">{screenshot.name}</span>
             </div>)}
           </div>}
-          {props.screenshots.length > 0 && <button className="extract-images-button" type="button" disabled={props.imageLoading} onClick={props.onExtractImages}>
+          {props.screenshots.length > 0 && <button className="extract-images-button" type="button" disabled={props.imageLoading || !props.courseCode.trim()} onClick={props.onExtractImages}>
             {props.imageLoading ? <LoaderCircle className="spin" size={17} /> : <Sparkles size={17} />}
-            {props.imageLoading ? `Reading ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}` : `Extract sections from ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}`}
+            {props.imageLoading
+              ? `Reading ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}`
+              : !props.courseCode.trim()
+                ? "Enter course code to extract"
+                : `Extract sections from ${props.screenshots.length} screenshot${props.screenshots.length === 1 ? "" : "s"}`}
           </button>}
           {props.imageWarnings.length > 0 && (
             <div className="image-warning" role="status">
@@ -1025,6 +1029,10 @@ function App() {
 
   const extractCourseImages = async () => {
     if (!screenshots.length) return;
+    if (!courseCode.trim()) {
+      setCourseError("Enter the course code before extracting screenshot data.");
+      return;
+    }
     setImageLoading(true);
     setImageWarnings([]);
     setCourseError("");

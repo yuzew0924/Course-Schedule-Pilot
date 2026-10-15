@@ -48,6 +48,9 @@ among all remaining combinations.
 The per-course screenshot importer accepts multiple clipboard-pasted or uploaded
 PNG, JPEG, and WebP images up to 10 MB each. Adding an image only queues its
 preview; recognition starts only after the user selects **Extract sections**.
+Users may upload images first and enter the course code afterward. Extraction
+remains disabled until the course code is present, providing the recognizer with
+a reliable course hint.
 Each image is sent to `POST /api/courses/extract-from-image`, and the validated
 results are merged into the current editable course draft. Every screenshot
 must contain exactly one course and all screenshots must represent the same
