@@ -153,9 +153,10 @@ time, location, and linked lecture can be corrected before selecting **Add
 course**. The source image is discarded after the course is added; only the
 validated, editable course data is retained.
 
-Manual section rows start with blank weekdays and times; the UI does not assume
-a default lecture schedule. If screenshots are queued without a course code,
-clicking the extraction action explains that the code is required.
+The manual section area starts empty; the UI does not create or assume a default
+lecture schedule. Users add rows only when needed. If screenshots are queued
+without a course code, clicking the extraction action explains that the code is
+required.
 
 The extraction endpoint is `POST /api/courses/extract-from-image`. It accepts
 `imageBase64`, `mediaType`, and optional `courseCodeHint` and `courseTitleHint`

@@ -63,8 +63,8 @@ The course builder accepts a course code and repeatable section rows. Each row
 contains a component type, section ID, weekday codes, start time, and end time.
 Time controls use a 12-hour AM/PM format and convert to the API's `HH:MM` format
 before validation and submission.
-New rows do not contain default weekdays or meeting times. Users must enter the
-actual schedule before adding the course.
+The section area starts with no rows. Selecting **Add section time** creates a
+blank row, and users must enter the actual schedule before adding the course.
 All entered sections are treated as available (`open`). The frontend groups rows
 by component type and sends the resulting schema to the backend; users never
 need to write JSON.

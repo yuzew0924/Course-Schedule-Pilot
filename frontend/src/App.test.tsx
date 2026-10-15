@@ -44,6 +44,7 @@ function setMeeting(section: number, days = "MWF") {
 
 function addBasicCourse(code = "CSE 373") {
   fireEvent.change(screen.getByLabelText("Course code"), { target: { value: code } });
+  fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
   setMeeting(1);
   fireEvent.click(screen.getByRole("button", { name: "Add course" }));
 }
@@ -51,6 +52,7 @@ function addBasicCourse(code = "CSE 373") {
 function addEditableCourse() {
   fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 373" } });
   fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Data Structures and Algorithms" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
   setMeeting(1);
   fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
   fireEvent.change(screen.getByLabelText("Section 2 ID"), { target: { value: "B" } });
@@ -85,9 +87,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Course Schedule Pilot" })).toBeInTheDocument();
     expect(screen.getByLabelText("Describe your ideal schedule")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Load sample data" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Section 1 days")).toHaveValue("");
-    expect(screen.getByLabelText("Section 1 start time hour")).toHaveValue("");
-    expect(screen.getByLabelText("Section 1 end time hour")).toHaveValue("");
+    expect(screen.queryByLabelText("Section 1 days")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add section time" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Checking backend");
     expect(await screen.findByText("Backend online")).toBeInTheDocument();
   });
@@ -107,6 +108,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "CSE 414" }
     });
+    fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     setMeeting(1);
     fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     fireEvent.change(screen.getByLabelText("Section 2 type"), {
@@ -230,6 +232,7 @@ describe("App", () => {
     render(<App />);
 
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CSE 414" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     setMeeting(1);
     fireEvent.change(screen.getByLabelText("Section 1 days"), { target: { value: "Sunday" } });
     fireEvent.click(screen.getByRole("button", { name: "Add course" }));
@@ -421,6 +424,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Course code"), {
       target: { value: "CHEM 142" }
     });
+    fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     setMeeting(1);
     fireEvent.click(screen.getByRole("button", { name: "Add section time" }));
     fireEvent.change(screen.getByLabelText("Section 2 type"), {

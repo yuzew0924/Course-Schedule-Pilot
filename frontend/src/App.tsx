@@ -673,7 +673,6 @@ function InputView(props: InputViewProps) {
                 type="button"
                 aria-label={`Remove section ${section.id || section.key}`}
                 title="Remove section"
-                disabled={props.sectionDrafts.length === 1}
                 onClick={() => props.onRemoveSection(section.key)}
               >
                 <Trash2 size={18} />
@@ -948,10 +947,8 @@ function App() {
   const [stage, setStage] = useState<Stage>("input");
   const [courseCode, setCourseCode] = useState("");
   const [courseTitle, setCourseTitle] = useState("");
-  const [sectionDrafts, setSectionDrafts] = useState<SectionDraft[]>([
-    newSectionDraft(1)
-  ]);
-  const [nextSectionKey, setNextSectionKey] = useState(2);
+  const [sectionDrafts, setSectionDrafts] = useState<SectionDraft[]>([]);
+  const [nextSectionKey, setNextSectionKey] = useState(1);
   const [courses, setCourses] = useState<Course[]>([]);
   const [preferenceText, setPreferenceText] = useState("");
   const [preferences, setPreferences] = useState<ParsedPreferences | null>(null);
@@ -974,8 +971,7 @@ function App() {
       setCourses((current) => [...current, course]);
       setCourseCode("");
       setCourseTitle("");
-      setSectionDrafts([newSectionDraft(nextSectionKey)]);
-      setNextSectionKey((current) => current + 1);
+      setSectionDrafts([]);
       setScreenshots([]);
       setImageWarnings([]);
       setCourseError("");
