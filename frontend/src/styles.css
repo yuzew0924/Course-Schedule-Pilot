@@ -75,6 +75,8 @@ h1, h2, h3, p { margin-top: 0; }
 .section-input-row input, .section-input-row select { width: 100%; min-width: 0; height: 40px; border: 1px solid #cbd6e3; border-radius: 6px; padding: 0 9px; color: #142641; background: #fff; }
 .time-12-input { display: grid; grid-template-columns: minmax(42px, 0.8fr) auto minmax(48px, 0.9fr) minmax(54px, 1fr); align-items: center; gap: 3px; }
 .time-12-input select { min-width: 0; padding: 0 4px; text-align: center; }
+.time-12-input select.placeholder-value { color: #7a8799; }
+.time-12-input select option { color: #142641; }
 .section-edit-card .time-12-input { margin-top: 4px; }
 .icon-button { display: grid; width: 36px; height: 40px; place-items: center; border: 0; border-radius: 5px; color: #637186; background: transparent; }
 .icon-button:hover:not(:disabled) { color: #a41e22; background: #fff1f1; }

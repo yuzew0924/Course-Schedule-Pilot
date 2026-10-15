@@ -154,9 +154,10 @@ course**. The source image is discarded after the course is added; only the
 validated, editable course data is retained.
 
 The manual section area starts empty; the UI does not create or assume a default
-lecture schedule. Users add rows only when needed. If screenshots are queued
-without a course code, clicking the extraction action explains that the code is
-required.
+lecture schedule, and its column labels stay hidden until a row exists. New rows
+use muted examples for the section ID and 12-hour time fields rather than actual
+values. If screenshots are queued without a course code, clicking the extraction
+action explains that the code is required.
 
 The extraction endpoint is `POST /api/courses/extract-from-image`. It accepts
 `imageBase64`, `mediaType`, and optional `courseCodeHint` and `courseTitleHint`

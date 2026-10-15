@@ -165,7 +165,7 @@ type SectionDraft = {
   parentSectionId: string;
 };
 
-const newSectionDraft = (key: number, id = "A"): SectionDraft => ({
+const newSectionDraft = (key: number, id = ""): SectionDraft => ({
   key,
   type: "lecture",
   id,
@@ -209,16 +209,16 @@ function Time12Input({
   };
   return (
     <div className="time-12-input" role="group" aria-label={label}>
-      <select aria-label={`${label} hour`} value={hour12} onChange={(event) => update(event.target.value, minute, period)}>
+      <select className={hour12 ? "" : "placeholder-value"} aria-label={`${label} hour`} value={hour12} onChange={(event) => update(event.target.value, minute, period)}>
         <option value="" disabled>Hour</option>
         {Array.from({ length: 12 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
       </select>
       <span>:</span>
-      <select aria-label={`${label} minute`} value={minute} onChange={(event) => update(hour12, event.target.value, period)}>
+      <select className={minute ? "" : "placeholder-value"} aria-label={`${label} minute`} value={minute} onChange={(event) => update(hour12, event.target.value, period)}>
         <option value="" disabled>Min</option>
         {minuteOptions.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
-      <select aria-label={`${label} period`} value={period} onChange={(event) => update(hour12, minute, event.target.value)}>
+      <select className={period ? "" : "placeholder-value"} aria-label={`${label} period`} value={period} onChange={(event) => update(hour12, minute, event.target.value)}>
         <option value="" disabled>AM/PM</option>
         <option value="AM">AM</option><option value="PM">PM</option>
       </select>
@@ -640,9 +640,9 @@ function InputView(props: InputViewProps) {
 
         <fieldset className="section-builder">
           <legend>Possible sections</legend>
-          <div className="section-column-labels" aria-hidden="true">
+          {props.sectionDrafts.length > 0 && <div className="section-column-labels" aria-hidden="true">
             <span>Type</span><span>Section</span><span>Days</span><span>Start</span><span>End</span><span />
-          </div>
+          </div>}
           {props.sectionDrafts.map((section) => (
             <div className="section-input-row" key={section.key}>
               <select
@@ -989,17 +989,9 @@ function App() {
   };
 
   const addSection = () => {
-    const usedLectureIds = new Set(
-      sectionDrafts
-        .filter((section) => section.type === "lecture")
-        .map((section) => section.id.toUpperCase())
-    );
-    const nextId = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find(
-      (id) => !usedLectureIds.has(id)
-    ) ?? `A${nextSectionKey}`;
     setSectionDrafts((current) => [
       ...current,
-      newSectionDraft(nextSectionKey, nextId)
+      newSectionDraft(nextSectionKey)
     ]);
     setNextSectionKey((current) => current + 1);
   };

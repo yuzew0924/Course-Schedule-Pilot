@@ -64,7 +64,8 @@ contains a component type, section ID, weekday codes, start time, and end time.
 Time controls use a 12-hour AM/PM format and convert to the API's `HH:MM` format
 before validation and submission.
 The section area starts with no rows. Selecting **Add section time** creates a
-blank row, and users must enter the actual schedule before adding the course.
+blank row with muted section/time examples. Column labels are hidden while no
+rows exist, and users must enter the actual schedule before adding the course.
 All entered sections are treated as available (`open`). The frontend groups rows
 by component type and sends the resulting schema to the backend; users never
 need to write JSON.
