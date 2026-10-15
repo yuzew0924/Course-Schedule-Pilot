@@ -93,15 +93,20 @@ def normalize_extracted_courses(
     if not isinstance(raw, dict) or not isinstance(raw.get("courses"), list):
         return raw
 
+    warnings = raw.get("warnings")
+    if not isinstance(warnings, list):
+        warnings = []
+        raw["warnings"] = warnings
+
     for course in raw["courses"]:
         if not isinstance(course, dict):
             continue
         if course_code_hint:
             course["code"] = course_code_hint.strip().upper()
         if course_title_hint:
-            course["title"] = course_title_hint.strip()
-        elif course.get("title") == "":
-            course["title"] = None
+            course["title"] = course_title_hint.strip() or None
+        elif isinstance(course.get("title"), str):
+            course["title"] = course["title"].strip() or None
 
         groups = course.get("groups")
         if not isinstance(groups, list):
@@ -112,6 +117,8 @@ def normalize_extracted_courses(
                 continue
             group_type = str(group.get("type", "")).lower()
             sections = group.get("sections", [])
+            if group_type not in {"lecture", "quiz", "lab"}:
+                continue
             if group_type not in merged:
                 merged[group_type] = {
                     "type": group_type,
@@ -121,18 +128,22 @@ def normalize_extracted_courses(
             if isinstance(sections, list):
                 merged[group_type]["sections"].extend(sections)  # type: ignore[union-attr]
 
-        course["groups"] = list(merged.values())
-        for group in course["groups"]:
-            for section in group.get("sections", []):
+        normalized_groups: list[dict[str, object]] = []
+        for group in merged.values():
+            valid_sections: list[dict[str, object]] = []
+            for section in group.get("sections", []):  # type: ignore[union-attr]
                 if not isinstance(section, dict):
                     continue
                 section["id"] = str(section.get("id", "")).strip().upper()
+                if not section["id"]:
+                    warnings.append("Ignored an unreadable blank section row; verify that all visible sections were captured.")
+                    continue
                 section["status"] = str(section.get("status", "unknown")).lower()
                 if section.get("sln") is not None:
-                    section["sln"] = str(section["sln"])
+                    section["sln"] = str(section["sln"]).strip() or None
                 for optional_field in ("sln", "parentSectionId"):
-                    if section.get(optional_field) == "":
-                        section[optional_field] = None
+                    if isinstance(section.get(optional_field), str):
+                        section[optional_field] = section[optional_field].strip().upper() or None
                 for meeting in section.get("meetings", []):
                     if not isinstance(meeting, dict):
                         continue
@@ -140,6 +151,11 @@ def normalize_extracted_courses(
                         meeting["location"] = None
                     for field in ("startTime", "endTime"):
                         meeting[field] = normalize_extracted_time(meeting.get(field))
+                valid_sections.append(section)
+            if valid_sections:
+                group["sections"] = valid_sections
+                normalized_groups.append(group)
+        course["groups"] = normalized_groups
     return raw
 
 

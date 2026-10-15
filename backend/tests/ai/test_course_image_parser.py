@@ -153,6 +153,25 @@ def test_course_image_parser_explains_when_no_sections_are_found() -> None:
         asyncio.run(parser.parse("aW1hZ2U=", "image/png", course_code_hint="CSE 414"))
 
 
+def test_normalization_drops_blank_placeholder_rows_but_keeps_valid_sections() -> None:
+    raw = extracted_payload()
+    raw["courses"][0]["title"] = "   "
+    raw["courses"][0]["groups"][0]["sections"].append({
+        "id": " ",
+        "status": "unknown",
+        "sln": "",
+        "meetings": [],
+        "parentSectionId": "",
+        "requiredSectionIds": [],
+    })
+
+    normalized = normalize_extracted_courses(raw, course_code_hint="CSE 414")
+
+    assert normalized["courses"][0]["title"] is None
+    assert [section["id"] for section in normalized["courses"][0]["groups"][0]["sections"]] == ["A"]
+    assert any("blank section row" in warning for warning in normalized["warnings"])
+
+
 def test_extract_courses_endpoint_returns_editable_courses() -> None:
     fake_client = FakeImageClient(extracted_payload())
     app.dependency_overrides[get_course_image_parser] = lambda: CourseImageParser(fake_client)
